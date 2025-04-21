@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: 'https://school-management-backend-uciz.onrender.com/api',
+  baseURL: 'http://43.204.144.148:5000/api',
 });
 
 export const setAuthToken = (token) => {
