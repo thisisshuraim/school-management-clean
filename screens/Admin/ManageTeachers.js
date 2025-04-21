@@ -1,42 +1,21 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  useColorScheme,
-  Alert,
-  Switch,
-  LayoutAnimation,
-  Platform,
-  UIManager
+  View, Text, TextInput, ScrollView, TouchableOpacity, Alert, StyleSheet,
+  LayoutAnimation, Platform, UIManager, useColorScheme, ActivityIndicator, Switch
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import {
+  getTeachers, createTeacher, updateTeacher, deleteTeacher, register, deleteUser
+} from '../../utils/api';
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
 }
 
-const PAGE_SIZE = 5;
-
 const ManageTeachers = () => {
   const isDark = useColorScheme() === 'dark';
 
-  const [teachers, setTeachers] = useState([
-    {
-      id: 1,
-      name: 'Meera Joshi',
-      subjects: 'Math, Science',
-      classes: '1B, 5A',
-      classTeacher: true,
-      classTeacherClass: '5A',
-      username: 'meera',
-      password: ''
-    }
-  ]);
-
+  const [teachers, setTeachers] = useState([]);
   const [form, setForm] = useState({
     id: null,
     name: '',
@@ -45,20 +24,32 @@ const ManageTeachers = () => {
     classTeacher: false,
     classTeacherClass: '',
     username: '',
-    password: ''
+    password: '',
+    userId: null
   });
-
+  const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
-  const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const PAGE_SIZE = 5;
 
-  const toggleForm = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setShowForm((prev) => !prev);
+  useEffect(() => { fetchTeachers(); }, []);
+
+  const fetchTeachers = async () => {
+    setLoading(true);
+    try {
+      const res = await getTeachers();
+      setTeachers(res.data);
+    } catch {
+      Alert.alert('Error', 'Failed to load teachers');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleAddOrUpdate = () => {
-    const { id, name, subjects, classes, classTeacher, classTeacherClass, username, password } = form;
+  const handleAddOrUpdate = async () => {
+    const { id, name, subjects, classes, classTeacher, classTeacherClass, username, password, userId } = form;
     if (!name || !subjects || !classes || !username || (!id && !password)) {
       Alert.alert('Missing fields', 'Please fill all fields.');
       return;
@@ -68,47 +59,83 @@ const ManageTeachers = () => {
       return;
     }
 
-    const newTeacher = { ...form };
-    if (!classTeacher) newTeacher.classTeacherClass = '';
+    try {
+      setSaving(true);
 
-    if (id) {
-      setTeachers((prev) => prev.map((t) => (t.id === id ? newTeacher : t)));
-    } else {
-      setTeachers([...teachers, { ...newTeacher, id: Date.now() }]);
+      const subjectArr = subjects.split(',').map(s => s.trim()).filter(Boolean);
+      const classArr = classes.split(',').map(c => c.trim()).filter(Boolean);
+
+      if (id) {
+        await updateTeacher(id, {
+          name,
+          subjects: subjectArr,
+          assignedClasses: classArr,
+          classTeacher,
+          classTeacherClass,
+          user: userId
+        });
+      } else {
+        const userRes = await register({ username, password, role: 'teacher' });
+        const createdUserId = userRes?.data?._id;
+        if (!createdUserId) throw new Error('User creation failed');
+
+        await createTeacher({
+          name,
+          subjects: subjectArr,
+          assignedClasses: classArr,
+          classTeacher,
+          classTeacherClass,
+          user: createdUserId
+        });
+      }
+
+      await fetchTeachers();
+      setForm({ id: null, name: '', subjects: '', classes: '', classTeacher: false, classTeacherClass: '', username: '', password: '', userId: null });
+      setShowForm(false);
+    } catch (err) {
+      const msg = err?.response?.data?.message || err.message || '';
+      Alert.alert(msg.includes('duplicate key') ? 'Username Exists' : 'Error', msg);
+    } finally {
+      setSaving(false);
     }
-
-    setForm({ id: null, name: '', subjects: '', classes: '', classTeacher: false, classTeacherClass: '', username: '', password: '' });
-    setPage(0);
-    setShowForm(false);
   };
 
-  const handleEdit = (teacher) => {
-    setForm(teacher);
+  const handleEdit = (t) => {
+    setForm({
+      id: t._id,
+      name: t.name || '',
+      subjects: Array.isArray(t.subjects) ? t.subjects.join(', ') : '',
+      classes: Array.isArray(t.assignedClasses) ? t.assignedClasses.join(', ') : '',
+      classTeacher: t.classTeacher || false,
+      classTeacherClass: t.classTeacherClass || '',
+      username: t.user?.username || '',
+      password: '',
+      userId: t.user?._id || ''
+    });
     setShowForm(true);
   };
 
-  const handleDelete = (id) => {
-    setTeachers(teachers.filter((t) => t.id !== id));
+  const handleDelete = async (id) => {
+    try {
+      await deleteUser(id);
+      await deleteTeacher(id);
+      await fetchTeachers();
+    } catch {
+      Alert.alert('Error', 'Failed to delete teacher');
+    }
   };
 
   const filtered = teachers.filter(
     (t) =>
-      t.name.toLowerCase().includes(search.toLowerCase()) ||
-      t.username.toLowerCase().includes(search.toLowerCase())
+      (t.name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (t.user?.username || '').toLowerCase().includes(search.toLowerCase())
   );
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const start = page * PAGE_SIZE;
-  const paginated = filtered.slice(start, start + PAGE_SIZE);
+  const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   return (
-    <ScrollView
-      contentContainerStyle={{
-        padding: 24,
-        backgroundColor: isDark ? '#0f172a' : '#f9fafc',
-        flexGrow: 1
-      }}
-    >
+    <ScrollView contentContainerStyle={{ padding: 24, backgroundColor: isDark ? '#0f172a' : '#f9fafc', flexGrow: 1 }}>
       <Text style={[styles.heading, { color: isDark ? '#fff' : '#111827' }]}>👩‍🏫 Manage Teachers</Text>
 
       <TextInput
@@ -119,13 +146,12 @@ const ManageTeachers = () => {
         onChangeText={setSearch}
       />
 
-      <TouchableOpacity style={styles.accordionHeader} onPress={toggleForm}>
+      <TouchableOpacity style={styles.accordionHeader} onPress={() => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setShowForm(!showForm);
+      }}>
         <Text style={styles.accordionTitle}>{form.id ? 'Edit Teacher' : 'Add New Teacher'}</Text>
-        <Ionicons
-          name={showForm ? 'chevron-up-outline' : 'chevron-down-outline'}
-          size={20}
-          color="#2563eb"
-        />
+        <Ionicons name={showForm ? 'chevron-up-outline' : 'chevron-down-outline'} size={20} color="#2563eb" />
       </TouchableOpacity>
 
       {showForm && (
@@ -136,12 +162,11 @@ const ManageTeachers = () => {
               placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
               placeholderTextColor={isDark ? '#94a3b8' : '#6b7280'}
               style={[styles.input, { backgroundColor: isDark ? '#334155' : '#f1f5f9', color: isDark ? '#fff' : '#000' }]}
-              secureTextEntry={field === 'password'}
               value={form[field]}
+              secureTextEntry={field === 'password'}
               onChangeText={(text) => setForm({ ...form, [field]: text })}
             />
           ))}
-          <Text style={styles.helperText}>Assigned Classes: comma-separated (e.g., 1A, 2B)</Text>
 
           <View style={styles.switchRow}>
             <Text style={{ color: isDark ? '#fff' : '#000', fontWeight: '600' }}>Class Teacher</Text>
@@ -161,166 +186,89 @@ const ManageTeachers = () => {
             />
           )}
 
-          <TouchableOpacity style={styles.addBtn} onPress={handleAddOrUpdate}>
-            <Ionicons
-              name={form.id ? 'create-outline' : 'person-add-outline'}
-              size={18}
-              color="#fff"
-            />
+          <TouchableOpacity style={styles.addBtn} onPress={handleAddOrUpdate} disabled={saving}>
+            {saving ? <ActivityIndicator color="#fff" /> : <Ionicons name={form.id ? 'create-outline' : 'person-add-outline'} size={18} color="#fff" />}
             <Text style={styles.addBtnText}>{form.id ? 'Update' : 'Add Teacher'}</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      <Text style={[styles.subheading, { color: isDark ? '#fff' : '#111827' }]}>Registered Teachers ({filtered.length})</Text>
-
-      {paginated.map((t) => (
-        <View key={t.id} style={[styles.card, { backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
-          <Text style={[styles.teacherText, { color: isDark ? '#fff' : '#111827' }]}>{t.name} — {t.username}</Text>
-          <Text style={[styles.detailText, { color: isDark ? '#cbd5e1' : '#4b5563' }]}>Subjects: {t.subjects}</Text>
-          <Text style={[styles.detailText, { color: isDark ? '#cbd5e1' : '#4b5563' }]}>Classes: {t.classes}</Text>
-          {t.classTeacher && (
-            <Text style={{ color: '#22c55e', fontWeight: '600' }}>Class Teacher of {t.classTeacherClass}</Text>
-          )}
-          <View style={styles.actions}>
-            <TouchableOpacity onPress={() => handleEdit(t)}>
-              <Ionicons name="create-outline" size={20} color="#0ea5e9" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleDelete(t.id)}>
-              <Ionicons name="trash-outline" size={20} color="#ef4444" />
-            </TouchableOpacity>
+      {loading ? (
+        <ActivityIndicator size="large" color="#2563eb" style={{ marginTop: 24 }} />
+      ) : (
+        filtered.length > 0 ? paginated.map((t) => (
+          <View key={t._id} style={[styles.card, styles.teacherCard, { backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
+            <View style={styles.teacherInfoRow}>
+              <View style={styles.avatarCircle}>
+                <MaterialIcons name="person" size={22} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.teacherName, { color: isDark ? '#fff' : '#111827' }]}>{t.name}</Text>
+                <Text style={[styles.teacherMeta, { color: isDark ? '#94a3b8' : '#6b7280', fontStyle: 'italic', fontWeight: '600' }]}>@{t.user?.username}</Text>
+                <Text style={[styles.teacherMeta, { color: isDark ? '#94a3b8' : '#6b7280' }]}>Subjects: {(t.subjects || []).join(', ')}</Text>
+                <Text style={[styles.teacherMeta, { color: isDark ? '#94a3b8' : '#6b7280' }]}>Classes: {(t.assignedClasses || []).join(', ')}</Text>
+                {t.classTeacher && (
+                  <Text style={{ color: '#22c55e', fontWeight: '600' }}>Class Teacher of {t.classTeacherClass}</Text>
+                )}
+              </View>
+              <View style={styles.actions}>
+                <TouchableOpacity onPress={() => handleEdit(t)}>
+                  <Ionicons name="create-outline" size={20} color="#0ea5e9" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => {
+                  Alert.alert(
+                    'Confirm Deletion',
+                    'Are you sure you want to delete this teacher?',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Delete', style: 'destructive', onPress: () => handleDelete(t._id) }
+                    ]
+                  );
+                }}>
+                  <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
-        </View>
-      ))}
-
-      {totalPages > 1 && (
-        <View style={styles.pagination}>
-          <TouchableOpacity
-            onPress={() => setPage((p) => Math.max(p - 1, 0))}
-            disabled={page === 0}
-            style={[styles.pageBtn, page === 0 && styles.pageBtnDisabled]}
-          >
-            <Text style={styles.pageBtnText}>Previous</Text>
-          </TouchableOpacity>
-          <Text style={[styles.pageStatus, { color: isDark ? '#fff' : '#000' }]}>Page {page + 1} of {totalPages}</Text>
-          <TouchableOpacity
-            onPress={() => setPage((p) => Math.min(p + 1, totalPages - 1))}
-            disabled={page >= totalPages - 1}
-            style={[styles.pageBtn, page >= totalPages - 1 && styles.pageBtnDisabled]}
-          >
-            <Text style={styles.pageBtnText}>Next</Text>
-          </TouchableOpacity>
-        </View>
+        )) : (
+          <Text style={{ textAlign: 'center', color: isDark ? '#94a3b8' : '#6b7280', marginTop: 20 }}>
+            No teachers found.
+          </Text>
+        )
       )}
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  heading: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 20
-  },
-  subheading: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginTop: 20,
-    marginBottom: 12
-  },
+  heading: { fontSize: 24, fontWeight: '700', marginBottom: 20 },
+  input: { padding: 10, borderRadius: 10, fontSize: 14, marginBottom: 12 },
   card: {
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 2
+    borderRadius: 14, padding: 16, marginBottom: 16,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4, elevation: 2
   },
-  input: {
-    padding: 10,
-    borderRadius: 10,
-    fontSize: 14,
-    marginBottom: 12
+  teacherCard: { padding: 12 },
+  teacherInfoRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  avatarCircle: {
+    backgroundColor: '#2563eb', width: 42, height: 42, borderRadius: 21,
+    alignItems: 'center', justifyContent: 'center', marginRight: 12
   },
-  helperText: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginBottom: 10,
-    marginTop: -8
-  },
+  teacherName: { fontSize: 16, fontWeight: '700' },
+  teacherMeta: { fontSize: 13, fontWeight: '500' },
+  actions: { flexDirection: 'row', gap: 12, marginLeft: 16 },
   accordionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#dbeafe',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    marginBottom: 12
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: '#dbeafe', paddingVertical: 12, paddingHorizontal: 16,
+    borderRadius: 10, marginBottom: 12
   },
-  accordionTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#2563eb'
-  },
+  accordionTitle: { fontSize: 15, fontWeight: '600', color: '#2563eb' },
   addBtn: {
-    flexDirection: 'row',
-    backgroundColor: '#2563eb',
-    paddingVertical: 12,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8
+    flexDirection: 'row', backgroundColor: '#2563eb', paddingVertical: 12,
+    borderRadius: 10, justifyContent: 'center', alignItems: 'center', gap: 8
   },
-  addBtnText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 15
-  },
-  teacherText: {
-    fontSize: 15,
-    fontWeight: '600'
-  },
-  detailText: {
-    fontSize: 14,
-    marginTop: 2
-  },
-  switchRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12
-  },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: 10,
-    gap: 12
-  },
-  pagination: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 12
-  },
-  pageBtn: {
-    padding: 10,
-    backgroundColor: '#e2e8f0',
-    borderRadius: 8
-  },
-  pageBtnDisabled: {
-    opacity: 0.5
-  },
-  pageBtnText: {
-    color: '#1e293b',
-    fontWeight: '600'
-  },
-  pageStatus: {
-    fontSize: 14,
-    fontWeight: '600'
-  }
+  addBtnText: { color: '#fff', fontWeight: '600', fontSize: 15, marginLeft: 6 },
+  switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }
 });
 
 export default ManageTeachers;

@@ -1,105 +1,99 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Image,
-  TouchableOpacity,
-  Alert,
-  useColorScheme
+  View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator,
+  useColorScheme, Image, Linking
 } from 'react-native';
-import * as FileSystem from 'expo-file-system';
-import * as MediaLibrary from 'expo-media-library';
 import { Ionicons } from '@expo/vector-icons';
-
-const TIMETABLE_IMAGE =
-  'https://placehold.co/1000x700/eeeeee/111111.png?text=Timetable';
-
-const classTeacher = 'Mrs. Fernandes';
+import { getMyTimetable } from '../../utils/api';
 
 const Timetable = () => {
   const isDark = useColorScheme() === 'dark';
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [timetable, setTimetable] = useState(null);
 
-  const handleDownload = async () => {
+  const fetchTimetable = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission required', 'Please allow access to media library.');
-        return;
-      }
-
-      const fileUri = FileSystem.documentDirectory + 'timetable.jpg';
-      const download = await FileSystem.downloadAsync(TIMETABLE_IMAGE, fileUri);
-      await MediaLibrary.saveToLibraryAsync(download.uri);
-      Alert.alert('Downloaded', 'Timetable saved to gallery.');
+      const res = await getMyTimetable();
+      setTimetable(res.data);
     } catch (err) {
-      Alert.alert('Download failed', err.message);
+      const msg = err?.response?.data?.message || 'Timetable not available';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTimetable();
+  }, []);
+
+  const handleDownload = () => {
+    if (timetable?.fileUrl) {
+      Linking.openURL(decodeURIComponent(timetable.fileUrl));
     }
   };
 
   return (
-    <ScrollView
-      contentContainerStyle={[
-        styles.container,
-        { backgroundColor: isDark ? '#0f172a' : '#f9fafc' }
-      ]}
-    >
-      <Text style={[styles.title, { color: isDark ? '#fff' : '#111827' }]}>📅 Timetable</Text>
-      <Text style={[styles.subtitle, { color: isDark ? '#cbd5e1' : '#4b5563' }]}>
-        Class Teacher: {classTeacher}
-      </Text>
+    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: isDark ? '#0f172a' : '#f9fafc' }]}>
+      <Text style={[styles.heading, { color: isDark ? '#fff' : '#111827' }]}>📅 Timetable</Text>
 
-      <Image
-        source={{ uri: TIMETABLE_IMAGE }}
-        style={styles.image}
-        resizeMode="cover"
-      />
+      {loading && <ActivityIndicator size="large" color="#2563eb" style={{ marginTop: 40 }} />}
 
-      <TouchableOpacity style={styles.button} onPress={handleDownload}>
-        <Ionicons name="download-outline" size={18} color="#fff" />
-        <Text style={styles.buttonText}>Download</Text>
-      </TouchableOpacity>
+      {!loading && error && (
+        <View style={styles.fallback}>
+          <Ionicons name="alert-circle-outline" size={40} color="#ef4444" />
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      )}
+
+      {!loading && timetable && (
+        <View style={[styles.card, { backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
+          <Text style={[styles.meta, { color: isDark ? '#cbd5e1' : '#6b7280' }]}>
+            Class: {timetable.classSection}
+          </Text>
+
+          <Image
+            source={{ uri: decodeURIComponent(timetable.fileUrl) }}
+            style={styles.image}
+            resizeMode="contain"
+          />
+
+          <TouchableOpacity style={styles.downloadBtn} onPress={handleDownload}>
+            <Ionicons name="download-outline" size={20} color="#fff" />
+            <Text style={styles.downloadText}>Download</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 24,
+  container: { flexGrow: 1, padding: 24 },
+  heading: { fontSize: 24, fontWeight: '700', marginBottom: 20 },
+  errorText: { textAlign: 'center', fontSize: 16, color: '#ef4444', marginTop: 12 },
+  fallback: {
     alignItems: 'center',
-    flexGrow: 1
+    justifyContent: 'center',
+    marginTop: 60,
+    padding: 20
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 4
+  card: {
+    borderRadius: 14, padding: 16, marginBottom: 16,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowOffset: { width: 0, height: 2 }, shadowRadius: 4, elevation: 2
   },
-  subtitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 20
+  meta: { fontSize: 14, marginBottom: 8 },
+  downloadBtn: {
+    flexDirection: 'row', gap: 8, justifyContent: 'center', alignItems: 'center',
+    marginTop: 12, padding: 12, backgroundColor: '#2563eb', borderRadius: 10
   },
+  downloadText: { color: '#fff', fontSize: 15, fontWeight: '600' },
   image: {
-    width: '100%',
-    aspectRatio: 1000 / 700,
-    borderRadius: 14,
-    marginBottom: 20,
-    backgroundColor: '#e5e7eb'
-  },
-  button: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#2563eb',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    gap: 8
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600'
+    width: '100%', height: 300, borderRadius: 10,
+    borderWidth: 1, borderColor: '#e5e7eb', marginTop: 12
   }
 });
 

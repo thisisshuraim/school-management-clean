@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import {
   View, Text, TextInput, ScrollView, TouchableOpacity, Alert, StyleSheet,
-  LayoutAnimation, Platform, UIManager, useColorScheme, ActivityIndicator, Linking
+  LayoutAnimation, Platform, UIManager, useColorScheme, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as DocumentPicker from 'expo-document-picker';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { getAssignments, uploadAssignment, deleteAssignment } from '../../utils/api';
-import * as WebBrowser from 'expo-web-browser';
+import * as ImagePicker from 'expo-image-picker';
+import { getLectures, uploadLecture, deleteLecture } from '../../utils/api';
+import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
+import UserContext from '../../context/UserContext';
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
@@ -15,47 +16,68 @@ if (Platform.OS === 'android') {
 
 const PAGE_SIZE = 5;
 
-const AllAssignmentsAdmin = () => {
-  const isDark = useColorScheme() === 'dark';
+const handleDownload = async (url) => {
+  if (!url || !url.startsWith('http')) {
+    Alert.alert('Invalid URL');
+    return;
+  }
 
-  const [assignments, setAssignments] = useState([]);
-  const [form, setForm] = useState({ classSection: '', subject: '', title: '', deadline: new Date(), file: null });
+  try {
+    const { status } = await MediaLibrary.requestPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission required', 'Please allow access to media library.');
+      return;
+    }
+
+    const fileUri = FileSystem.documentDirectory + url.split('/').pop();
+    const download = await FileSystem.downloadAsync(url, fileUri);
+    await MediaLibrary.saveToLibraryAsync(download.uri);
+    Alert.alert('Downloaded', 'Lecture saved to gallery.');
+  } catch (err) {
+    Alert.alert('Download failed', err.message);
+  }
+};
+
+const AllLectures = () => {
+  const isDark = useColorScheme() === 'dark';
+  const { user, profile } = useContext(UserContext);
+
+  const isTeacher = user?.role?.toLowerCase() === 'teacher';
+
+  const [lectures, setLectures] = useState([]);
+  const [form, setForm] = useState({ classSection: '', subject: '', title: '', file: null });
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const fetchAssignments = async () => {
+  const fetchLectures = async () => {
     setLoading(true);
     try {
-      const res = await getAssignments();
-      setAssignments(res.data);
-    } catch {
-      Alert.alert('Error', 'Failed to load assignments');
+      const res = await getLectures();
+      setLectures(res.data);
+    } catch (err) {
+      Alert.alert('Error', 'Failed to load lectures');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchAssignments(); }, []);
+  useEffect(() => { fetchLectures(); }, []);
 
   const handleFilePick = async () => {
-    const result = await DocumentPicker.getDocumentAsync({ type: 'application/pdf' });
-    if (result.assets?.[0]) {
-      setForm(prev => ({ ...prev, file: result.assets[0] }));
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: [ImagePicker.MediaType.VIDEO] });
+    if (!result.canceled && result.assets?.length > 0) {
+      const video = result.assets[0];
+      setForm(prev => ({ ...prev, file: { uri: video.uri, name: video.fileName || 'video.mp4', type: video.type || 'video/mp4' } }));
     }
   };
 
   const handleAdd = async () => {
-    const { title, classSection, subject, deadline, file } = form;
-    if (!title || !classSection || !subject || !deadline || !file) {
+    const { title, classSection, subject, file } = form;
+    if (!title || !classSection || !subject || !file) {
       Alert.alert('Missing', 'Fill all fields and pick a file');
-      return;
-    }
-    if (new Date(deadline) < new Date()) {
-      Alert.alert('Invalid Deadline', 'Deadline must be a future date.');
       return;
     }
 
@@ -65,12 +87,11 @@ const AllAssignmentsAdmin = () => {
       fd.append('title', title);
       fd.append('classSection', classSection);
       fd.append('subject', subject);
-      fd.append('deadline', deadline.toISOString().split('T')[0]);
-      fd.append('file', { uri: file.uri, name: file.name, type: file.mimeType });
+      fd.append('video', { uri: file.uri, name: file.name, type: file.type });
 
-      await uploadAssignment(fd);
-      await fetchAssignments();
-      setForm({ classSection: '', subject: '', title: '', deadline: new Date(), file: null });
+      await uploadLecture(fd);
+      await fetchLectures();
+      setForm({ classSection: '', subject: '', title: '', file: null });
       setShowForm(false);
     } catch {
       Alert.alert('Error', 'Upload failed');
@@ -80,32 +101,18 @@ const AllAssignmentsAdmin = () => {
   };
 
   const handleDelete = (id) => {
-    Alert.alert('Confirm Delete', 'Are you sure you want to delete this assignment?', [
+    Alert.alert('Confirm Delete', 'Are you sure you want to delete this lecture?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete', style: 'destructive', onPress: async () => {
-          await deleteAssignment(id);
-          await fetchAssignments();
+          await deleteLecture(id);
+          await fetchLectures();
         }
       }
     ]);
   };
 
-  const handleDownload = async (url) => {
-    if (!url || !url.startsWith('http')) {
-      Alert.alert('Invalid URL');
-      return;
-    }
-
-    try {
-      const decoded = decodeURIComponent(url);
-      await WebBrowser.openBrowserAsync(decoded);
-    } catch (err) {
-      Alert.alert('Open Failed', err.message);
-    }
-  };
-
-  const grouped = assignments
+  const grouped = lectures
     .filter(a => a.title.toLowerCase().includes(search.toLowerCase()))
     .slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
     .reduce((acc, a) => {
@@ -115,11 +122,12 @@ const AllAssignmentsAdmin = () => {
       return acc;
     }, {});
 
-  const totalPages = Math.ceil(assignments.length / PAGE_SIZE);
+  const classOptions = isTeacher ? (profile?.assignedClasses || []) : [];
+  const subjectOptions = isTeacher ? (profile?.subjects || []) : [];
 
   return (
     <ScrollView contentContainerStyle={{ padding: 24, backgroundColor: isDark ? '#0f172a' : '#f9fafc', flexGrow: 1 }}>
-      <Text style={[styles.heading, { color: isDark ? '#fff' : '#111827' }]}>📚 All Assignments</Text>
+      <Text style={[styles.heading, { color: isDark ? '#fff' : '#111827' }]}>🎥 All Lectures</Text>
 
       <TextInput
         placeholder="Search by title"
@@ -133,13 +141,48 @@ const AllAssignmentsAdmin = () => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setShowForm(!showForm);
       }}>
-        <Text style={styles.accordionTitle}>Upload Assignment</Text>
+        <Text style={styles.accordionTitle}>Upload Lecture</Text>
         <Ionicons name={showForm ? 'chevron-up-outline' : 'chevron-down-outline'} size={20} color="#2563eb" />
       </TouchableOpacity>
 
       {showForm && (
         <View style={[styles.card, { backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
-          {['title', 'classSection', 'subject'].map((field) => (
+          <TextInput
+            placeholder="Title"
+            placeholderTextColor={isDark ? '#94a3b8' : '#6b7280'}
+            style={[styles.input, { backgroundColor: isDark ? '#334155' : '#f1f5f9', color: isDark ? '#fff' : '#000' }]}
+            value={form.title}
+            onChangeText={(text) => setForm({ ...form, title: text })}
+          />
+
+          {isTeacher && (
+            <>
+              <View style={[styles.pickerRow, { marginBottom: 12 }]}>
+                {classOptions.map((cls) => (
+                  <TouchableOpacity
+                    key={cls}
+                    style={[styles.pickerOption, form.classSection === cls && styles.pickerSelected]}
+                    onPress={() => setForm({ ...form, classSection: cls })}
+                  >
+                    <Text style={{ color: form.classSection === cls ? '#fff' : isDark ? '#cbd5e1' : '#111827' }}>{cls}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={[styles.pickerRow, { marginBottom: 12 }]}>
+                {subjectOptions.map((subj) => (
+                  <TouchableOpacity
+                    key={subj}
+                    style={[styles.pickerOption, form.subject === subj && styles.pickerSelected]}
+                    onPress={() => setForm({ ...form, subject: subj })}
+                  >
+                    <Text style={{ color: form.subject === subj ? '#fff' : isDark ? '#cbd5e1' : '#111827' }}>{subj}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
+          )}
+
+          {!isTeacher && (["classSection", "subject"].map((field) => (
             <TextInput
               key={field}
               placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
@@ -148,25 +191,7 @@ const AllAssignmentsAdmin = () => {
               value={form[field]}
               onChangeText={(text) => setForm({ ...form, [field]: text })}
             />
-          ))}
-
-          <TouchableOpacity style={[styles.input, styles.deadlinePicker]} onPress={() => setShowDatePicker(true)}>
-            <Ionicons name="calendar-outline" size={18} color={isDark ? '#fff' : '#000'} style={{ marginRight: 8 }} />
-            <Text style={{ color: isDark ? '#fff' : '#000' }}>Deadline: {form.deadline.toDateString()}</Text>
-          </TouchableOpacity>
-
-          {showDatePicker && (
-            <DateTimePicker
-              value={form.deadline}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
-              onChange={(e, date) => {
-                setShowDatePicker(false);
-                if (date && date > new Date()) setForm({ ...form, deadline: date });
-                else if (date) Alert.alert('Invalid Deadline', 'Deadline must be a future date.');
-              }}
-            />
-          )}
+          )))}
 
           <TouchableOpacity style={styles.uploadBtn} onPress={handleFilePick}>
             <Ionicons name="cloud-upload-outline" size={20} color="#fff" />
@@ -174,7 +199,7 @@ const AllAssignmentsAdmin = () => {
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.saveBtn} onPress={handleAdd} disabled={saving}>
-            <Text style={styles.saveText}>{saving ? 'Uploading...' : 'Upload Assignment'}</Text>
+            <Text style={styles.saveText}>{saving ? 'Uploading...' : 'Upload Lecture'}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -182,18 +207,17 @@ const AllAssignmentsAdmin = () => {
       {loading ? (
         <ActivityIndicator color="#2563eb" />
       ) : Object.keys(grouped).length === 0 ? (
-        <Text style={{ color: isDark ? '#cbd5e1' : '#6b7280', marginTop: 20, textAlign: 'center' }}>No assignments found.</Text>
+        <Text style={{ color: isDark ? '#cbd5e1' : '#6b7280', marginTop: 20, textAlign: 'center' }}>No lectures found.</Text>
       ) : (
         Object.keys(grouped).map((key) => (
           <View key={key} style={[styles.card, { backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
             <Text style={[styles.groupTitle, { color: isDark ? '#fff' : '#111827' }]}>Class {key}</Text>
             {grouped[key].map(a => (
               <View key={a._id} style={{ marginBottom: 16 }}>
-                <Text style={[styles.meta, { color: isDark ? '#f1f5f9' : '#111827' }]}>📌 {a.title}</Text>
+                <Text style={[styles.meta, { color: isDark ? '#f1f5f9' : '#111827' }]}>🎬 {a.title}</Text>
                 <Text style={[styles.meta, { color: isDark ? '#cbd5e1' : '#6b7280' }]}>Subject: {a.subject || '-'}</Text>
-                <Text style={[styles.meta, { color: isDark ? '#cbd5e1' : '#6b7280' }]}>Deadline: {a.deadline?.split('T')[0] || '-'}</Text>
                 <View style={styles.actions}>
-                  <TouchableOpacity onPress={() => handleDownload(a.fileUrl)}>
+                  <TouchableOpacity onPress={() => handleDownload(a.videoUrl)}>
                     <Ionicons name="download-outline" size={20} color="#2563eb" />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => handleDelete(a._id)}>
@@ -212,7 +236,6 @@ const AllAssignmentsAdmin = () => {
 const styles = StyleSheet.create({
   heading: { fontSize: 24, fontWeight: '700', marginBottom: 20 },
   input: { padding: 10, borderRadius: 10, fontSize: 14, marginBottom: 12 },
-  deadlinePicker: { flexDirection: 'row', alignItems: 'center', borderRadius: 10 },
   card: {
     borderRadius: 14, padding: 16, marginBottom: 16,
     shadowColor: '#000', shadowOpacity: 0.05, shadowOffset: { width: 0, height: 2 }, shadowRadius: 4, elevation: 2
@@ -235,7 +258,13 @@ const styles = StyleSheet.create({
     borderRadius: 12, alignItems: 'center'
   },
   saveText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  actions: { flexDirection: 'row', gap: 16, marginTop: 6 }
+  actions: { flexDirection: 'row', gap: 16, marginTop: 6 },
+  pickerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  pickerOption: {
+    paddingVertical: 10, paddingHorizontal: 16,
+    borderRadius: 10, backgroundColor: '#e2e8f0'
+  },
+  pickerSelected: { backgroundColor: '#2563eb' }
 });
 
-export default AllAssignmentsAdmin;
+export default AllLectures;

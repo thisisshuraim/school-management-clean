@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import {
   View,
   Text,
@@ -6,95 +6,134 @@ import {
   TouchableOpacity,
   useColorScheme,
   Dimensions,
-  SafeAreaView
+  SafeAreaView,
+  Animated,
+  Pressable,
+  Image
 } from 'react-native';
-import Modal from 'react-native-modal';
 import { Ionicons } from '@expo/vector-icons';
+import UserContext from '../context/UserContext';
 
 const { width } = Dimensions.get('window');
 
-const ProfileSidebar = ({ visible, onClose, user = {}, onLogout }) => {
+const capitalizeFirst = (str = '') => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+
+const ProfileSidebar = ({ visible, onClose, onLogout }) => {
+  const { user, profile } = useContext(UserContext);
   const isDark = useColorScheme() === 'dark';
   const bgColor = isDark ? '#0f172a' : '#ffffff';
   const textColor = isDark ? '#f8fafc' : '#111827';
-  const subColor = isDark ? '#cbd5e1' : '#374151';
   const divider = isDark ? '#334155' : '#e2e8f0';
 
-  const isTeacher = user.role === 'Teacher';
-  const isStudent = user.role === 'Student';
+  const translateX = React.useRef(new Animated.Value(width)).current;
 
-  const upcomingDeadlines = user.deadlines || [
-    { subject: 'Math', due: 'Apr 18' },
-    { subject: 'Science', due: 'Apr 20' }
-  ];
+  React.useEffect(() => {
+    Animated.timing(translateX, {
+      toValue: visible ? 0 : width,
+      duration: 300,
+      useNativeDriver: true
+    }).start();
+  }, [visible]);
+
+  const isTeacher = user?.role?.toLowerCase() === 'teacher';
+  const isStudent = user?.role?.toLowerCase() === 'student';
+  const isAdmin = user?.role?.toLowerCase() === 'admin';
 
   return (
-    <Modal
-      isVisible={visible}
-      animationIn="slideInRight"
-      animationOut="slideOutRight"
-      backdropOpacity={0.3}
-      onBackdropPress={onClose}
-      style={styles.modal}
-    >
-      <SafeAreaView style={[styles.panel, { backgroundColor: bgColor }]}>
-        <View style={styles.innerContent}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={[styles.name, { color: textColor }]}>👋 Hello, {user.username || 'User'}</Text>
+    <>
+      {visible && <Pressable style={styles.backdrop} onPress={onClose} />}
+      <Animated.View
+        style={[styles.panel, { backgroundColor: bgColor, transform: [{ translateX }] }]}
+        pointerEvents={visible ? 'auto' : 'none'}
+      >
+        <SafeAreaView style={{ flex: 1, justifyContent: 'space-between' }}>
+          <View style={styles.innerContent}>
+            <View style={styles.header}>
+              <Ionicons
+                name="person-circle-outline"
+                size={64}
+                style={{ marginBottom: 10, borderRadius: 32 }}
+              />
+              <Text style={[styles.name, { color: textColor }]}>👋 Hello, {profile?.name || user?.user?.username || 'User'}</Text>
+              <View style={[styles.pill, { backgroundColor: isDark ? '#334155' : '#e0e7ff' }]}>
+                <Text style={[styles.pillText, { color: isDark ? '#f8fafc' : '#1e3a8a' }]}>{capitalizeFirst(user?.role || 'User')}</Text>
+              </View>
+            </View>
 
-            {isStudent && (
-              <>
-                <Text style={[styles.metaLabel, { color: subColor }]}>Class</Text>
-                <Text style={[styles.metaValue, { color: textColor }]}>{`${user.class || '5'}${user.section || 'A'}`}</Text>
-              </>
-            )}
+            <View style={styles.infoSection}>
+              {isStudent && (
+                <View style={styles.rowItem}>
+                  <Ionicons name="school-outline" size={16} color={textColor} />
+                  <Text style={[styles.metaValue, { color: textColor }]}>Class: {profile?.classSection || 'N/A'}</Text>
+                </View>
+              )}
 
-            {isTeacher && user.assignedClasses && (
-              <>
-                <Text style={[styles.metaLabel, { color: subColor }]}>Assigned Classes</Text>
-                <Text style={[styles.metaValue, { color: textColor }]}> {user.assignedClasses.join(', ')} </Text>
-              </>
-            )}
+              {isTeacher && (
+                <>
+                  {!!profile?.subjects?.length && (
+                    <View style={styles.rowItem}>
+                      <Ionicons name="book-outline" size={16} color={textColor} />
+                      <Text style={[styles.metaValue, { color: textColor }]}>Subjects: {profile.subjects.join(', ')}</Text>
+                    </View>
+                  )}
+                  {!!profile?.assignedClasses?.length && (
+                    <View style={styles.rowItem}>
+                      <Ionicons name="people-outline" size={16} color={textColor} />
+                      <Text style={[styles.metaValue, { color: textColor }]}>Assigned: {profile.assignedClasses.join(', ')}</Text>
+                    </View>
+                  )}
+                  {profile?.classTeacher && profile?.classTeacherClass && (
+                    <View style={styles.rowItem}>
+                      <Ionicons name="star-outline" size={16} color={textColor} />
+                      <Text style={[styles.metaValue, { color: textColor }]}>Class Teacher: {profile.classTeacherClass}</Text>
+                    </View>
+                  )}
+                </>
+              )}
+
+              {isAdmin && (
+                <View style={styles.rowItem}>
+                  <Ionicons name="settings-outline" size={16} color={textColor} />
+                  <Text style={[styles.metaValue, { color: textColor }]}>Admin privileges enabled</Text>
+                </View>
+              )}
+
+              <View style={[styles.divider, { backgroundColor: divider }]} />
+
+              <View style={styles.rowItem}>
+                <Ionicons name="person-circle-outline" size={16} color={textColor} />
+                <Text style={[styles.metaValue, { color: textColor }]}>Username: {user?.user?.username || 'N/A'}</Text>
+              </View>
+              <View style={styles.rowItem}>
+                <Ionicons name="id-card-outline" size={16} color={textColor} />
+                <Text style={[styles.metaValue, { color: textColor }]}>ID: {user?.userId || 'N/A'}</Text>
+              </View>
+            </View>
           </View>
 
-          {/* Divider */}
-          <View style={[styles.divider, { backgroundColor: divider }]} />
-
-          {/* Info Section */}
-          {(isStudent || isTeacher) && (
-            <View style={styles.infoSection}>
-              <Text style={[styles.metaLabel, { color: subColor, marginBottom: 12 }]}>Upcoming Deadlines</Text>
-              {upcomingDeadlines.map((item, index) => (
-                <View key={index} style={styles.deadlineRow}>
-                  <Ionicons name="calendar-outline" size={18} color={textColor} style={styles.icon} />
-                  <Text style={[styles.deadlineText, { color: textColor }]}>{item.subject}</Text>
-                  <Text style={[styles.deadlineDate, { color: textColor }]}>{item.due}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
-
-        {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
-    </Modal>
+          <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+        </SafeAreaView>
+      </Animated.View>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
-  modal: {
-    margin: 0,
-    justifyContent: 'flex-end',
-    alignItems: 'flex-end'
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    zIndex: 1
   },
   panel: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
     width: width * 0.75,
     maxWidth: 400,
-    height: '100%',
+    zIndex: 2,
     borderTopLeftRadius: 24,
     borderBottomLeftRadius: 24,
     shadowColor: '#000',
@@ -103,53 +142,45 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 10,
     paddingTop: 40,
-    paddingBottom: 36,
-    justifyContent: 'space-between'
+    paddingBottom: 36
   },
   innerContent: {
-    paddingHorizontal: 24,
-    flexGrow: 1
+    paddingHorizontal: 24
   },
   header: {
-    marginBottom: 28
+    marginBottom: 20
   },
   name: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
-    marginBottom: 10
+    marginBottom: 6
   },
-  metaLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 2
+  pill: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginTop: 4
+  },
+  pillText: {
+    fontSize: 12,
+    fontWeight: '600'
   },
   metaValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 6
+    fontSize: 15,
+    fontWeight: '500',
+    marginLeft: 8
   },
   divider: {
     height: 1,
-    marginBottom: 28
+    marginVertical: 24
   },
   infoSection: {
-    marginBottom: 36
+    gap: 12
   },
-  deadlineRow: {
+  rowItem: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10
-  },
-  icon: {
-    marginRight: 10
-  },
-  deadlineText: {
-    fontSize: 15,
-    flex: 1
-  },
-  deadlineDate: {
-    fontSize: 15,
-    fontWeight: '600'
+    alignItems: 'center'
   },
   logoutButton: {
     backgroundColor: '#ef4444',

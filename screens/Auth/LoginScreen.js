@@ -12,19 +12,28 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
+import { login } from '../../utils/api'; // ✅ import login API
 
 const LoginScreen = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const role = username.charAt(0).toUpperCase() + username.slice(1).toLowerCase();
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!username || !password) {
       Alert.alert('Missing Fields', 'Please enter both username and password.');
       return;
     }
 
-    onLogin({ username, role });
+    try {
+      setLoading(true);
+      const res = await login({ username, password }); // ✅ API call
+      onLogin(res.data); // ✅ send user + token to App.js
+    } catch (err) {
+      Alert.alert('Login Failed', err?.response?.data?.message || 'Invalid credentials');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -61,8 +70,12 @@ const LoginScreen = ({ onLogin }) => {
           placeholderTextColor="#999"
         />
 
-        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-          <Text style={styles.loginText}>Login</Text>
+        <TouchableOpacity
+          style={[styles.loginButton, loading && { opacity: 0.6 }]}
+          onPress={handleLogin}
+          disabled={loading}
+        >
+          <Text style={styles.loginText}>{loading ? 'Logging in...' : 'Login'}</Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>

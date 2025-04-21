@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,48 +11,52 @@ import {
   UIManager
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { getTeacherStudents } from '../../utils/api';
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
 }
 
-const assignedClasses = {
-  '1B': ['Ali Khan', 'Neha Sharma', 'John Mathews'],
-  '5A': ['Riya Das', 'Aman Joshi', 'Kabir Sinha', 'Tina Paul']
-};
-
 const ViewStudents = () => {
   const isDark = useColorScheme() === 'dark';
   const [expandedClass, setExpandedClass] = useState(null);
+  const [studentsByClass, setStudentsByClass] = useState({});
 
   const toggleClass = (className) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpandedClass(prev => (prev === className ? null : className));
   };
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await getTeacherStudents();
+        const grouped = res.data.reduce((acc, s) => {
+          const key = s.classSection;
+          if (!acc[key]) acc[key] = [];
+          acc[key].push(s);
+          return acc;
+        }, {});
+        setStudentsByClass(grouped);
+      } catch (err) {
+        console.error('Failed to load students');
+      }
+    })();
+  }, []);
+
   return (
     <ScrollView
-      contentContainerStyle={[
-        styles.container,
-        { backgroundColor: isDark ? '#0f172a' : '#f9fafc' }
-      ]}
+      contentContainerStyle={[styles.container, { backgroundColor: isDark ? '#0f172a' : '#f9fafc' }]}
     >
-      <Text style={[styles.heading, { color: isDark ? '#fff' : '#111827' }]}>
-        👥 Assigned Class Students
-      </Text>
+      <Text style={[styles.heading, { color: isDark ? '#fff' : '#111827' }]}>👥 Assigned Class Students</Text>
 
-      {Object.entries(assignedClasses).map(([className, students]) => (
+      {Object.entries(studentsByClass).map(([className, students]) => (
         <View key={className} style={styles.classBlock}>
           <TouchableOpacity
             onPress={() => toggleClass(className)}
-            style={[
-              styles.classHeader,
-              { backgroundColor: isDark ? '#1e293b' : '#ffffff' }
-            ]}
+            style={[styles.classHeader, { backgroundColor: isDark ? '#1e293b' : '#ffffff' }]}
           >
-            <Text style={[styles.classTitle, { color: isDark ? '#f8fafc' : '#111827' }]}>
-              Class {className}
-            </Text>
+            <Text style={[styles.classTitle, { color: isDark ? '#f8fafc' : '#111827' }]}>Class {className}</Text>
             <Ionicons
               name={expandedClass === className ? 'chevron-up' : 'chevron-down'}
               size={20}
@@ -60,18 +64,14 @@ const ViewStudents = () => {
             />
           </TouchableOpacity>
 
-          {expandedClass === className && (
-            <View style={styles.studentList}>
-              {students.map((student, idx) => (
-                <View key={idx} style={styles.studentRow}>
-                  <Ionicons name="person-circle-outline" size={18} color={isDark ? '#cbd5e1' : '#6b7280'} />
-                  <Text style={[styles.studentName, { color: isDark ? '#f8fafc' : '#111827' }]}>
-                    {student}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
+          <View style={[styles.studentList, { height: expandedClass === className ? 'auto' : 0, overflow: 'hidden' }]}>
+            {expandedClass === className && students.map((student) => (
+              <View key={student._id} style={styles.studentRow}>
+                <Ionicons name="person-circle-outline" size={18} color={isDark ? '#cbd5e1' : '#6b7280'} />
+                <Text style={[styles.studentName, { color: isDark ? '#f8fafc' : '#111827' }]}> {student.name} </Text>
+              </View>
+            ))}
+          </View>
         </View>
       ))}
     </ScrollView>
