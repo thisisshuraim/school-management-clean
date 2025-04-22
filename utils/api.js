@@ -16,6 +16,7 @@ export const setAuthToken = (token) => {
 // Auth
 export const login = (data) => API.post('/auth/login', data);
 export const register = (data) => API.post('/auth/register', data);
+export const updateUser = (id, data) => API.put(`/auth/${id}`, data);
 export const deleteUser = (id) => API.delete(`/auth/${id}`);
 
 // Students

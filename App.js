@@ -12,7 +12,6 @@ import ViewStudents from './screens/Teacher/ViewStudents';
 import ManageTimetable from './screens/Admin/ManageTimetable';
 import ManageStudents from './screens/Admin/ManageStudents';
 import ManageTeachers from './screens/Admin/ManageTeachers';
-import ViewClasses from './screens/Admin/ViewClasses';
 import UploadMarksheet from './screens/Admin/UploadMarksheet';
 import SharedDashboard from './screens/Common/Dashboard';
 import ProfileSidebar from './components/ProfileSidebar';
@@ -98,6 +97,7 @@ export default function App() {
                       <Stack.Screen name="Assignments">
                         {(props) => <UploadAssignmentShared {...props} userRole="student" />}
                       </Stack.Screen>
+                      <Stack.Screen name="AllLectures" component={AllLectures} options={commonOptions()} />
                     </>
                   )}
                   {user.role.toLowerCase() === 'teacher' && (
@@ -115,9 +115,8 @@ export default function App() {
                       <Stack.Screen name="ManageStudents" component={ManageStudents} options={commonOptions()} />
                       <Stack.Screen name="ManageTeachers" component={ManageTeachers} options={commonOptions()} />
                       <Stack.Screen name="ManageTimetable" component={ManageTimetable} options={commonOptions()} />
-                      <Stack.Screen name="ViewClasses" component={ViewClasses} options={commonOptions()} />
                       <Stack.Screen name="UploadMarksheet" component={UploadMarksheet} options={commonOptions()} />
-                      <Stack.Screen name="AllAssignments">
+                      <Stack.Screen name="Assignments">
                         {(props) => <UploadAssignmentShared {...props} userRole="admin" />}
                       </Stack.Screen>
                       <Stack.Screen name="AllLectures" component={AllLectures} options={commonOptions()} />

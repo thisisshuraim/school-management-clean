@@ -44,13 +44,13 @@ const SharedDashboard = ({ navigation }) => {
       { icon: 'school-outline', label: 'Teachers', screen: 'ManageTeachers' },
       { icon: 'calendar-outline', label: 'Timetable', screen: 'ManageTimetable' },
       { icon: 'clipboard-outline', label: 'Marksheets', screen: 'UploadMarksheet' },
-      { icon: 'document-text-outline', label: 'Assignments', screen: 'AllAssignments' },
+      { icon: 'document-text-outline', label: 'Assignments', screen: 'Assignments' },
       { icon: 'videocam-outline', label: 'Lectures', screen: 'AllLectures' }
     );
   } else if (isTeacher) {
     tiles.push(
       { icon: 'people-outline', label: 'Students', screen: 'ViewStudents' },
-      { icon: 'document-text-outline', label: 'Assignments', screen: 'UploadAssignment' },
+      { icon: 'document-text-outline', label: 'Assignments', screen: 'Assignments' },
       { icon: 'videocam-outline', label: 'Lectures', screen: 'AllLectures' }
     );
     if (profile?.classTeacher) {
@@ -60,7 +60,8 @@ const SharedDashboard = ({ navigation }) => {
     tiles.push(
       { icon: 'calendar-outline', label: 'Timetable', screen: 'Timetable' },
       { icon: 'document-text-outline', label: 'Assignments', screen: 'Assignments' },
-      { icon: 'clipboard-outline', label: 'Marksheet', screen: 'Marksheets' }
+      { icon: 'clipboard-outline', label: 'Marksheet', screen: 'Marksheets' },
+      { icon: 'videocam-outline', label: 'Lectures', screen: 'AllLectures' }
     );
   }
 

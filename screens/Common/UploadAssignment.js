@@ -13,6 +13,7 @@ if (Platform.OS === 'android') {
 }
 
 const PAGE_SIZE = 5;
+const GROUP_SCROLL_SIZE = 5;
 
 const UploadAssignmentShared = ({ userRole }) => {
   const isDark = useColorScheme() === 'dark';
@@ -28,6 +29,7 @@ const UploadAssignmentShared = ({ userRole }) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [visibleCounts, setVisibleCounts] = useState({}); // Track visible per subject group
 
   useEffect(() => {
     fetchAssignments();
@@ -101,21 +103,27 @@ const UploadAssignmentShared = ({ userRole }) => {
 
   const handleDownload = (url) => {
     if (!url) return Alert.alert('Error', 'No file URL available');
-    const fullUrl = url.startsWith('http')
-      ? url
-      : `https://school-management-backend-uciz.onrender.com/${url.replace(/^\/\?/, '')}`;
-    Linking.openURL(encodeURI(fullUrl));
+    Linking.openURL(encodeURI(url));
   };
 
   const grouped = assignments
     .filter(a => a.title.toLowerCase().includes(search.toLowerCase()))
-    .slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
     .reduce((acc, a) => {
-      const key = a.classSection;
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(a);
+      const classKey = a.classSection || 'Unknown';
+      const subjectKey = a.subject || 'General';
+      if (!acc[classKey]) acc[classKey] = {};
+      if (!acc[classKey][subjectKey]) acc[classKey][subjectKey] = [];
+      acc[classKey][subjectKey].push(a);
       return acc;
     }, {});
+
+  const loadMore = (classKey, subjectKey) => {
+    const groupKey = `${classKey}::${subjectKey}`;
+    setVisibleCounts(prev => ({
+      ...prev,
+      [groupKey]: (prev[groupKey] || GROUP_SCROLL_SIZE) + GROUP_SCROLL_SIZE
+    }));
+  };
 
   return (
     <ScrollView contentContainerStyle={{ padding: 24, backgroundColor: isDark ? '#0f172a' : '#f9fafc', flexGrow: 1 }}>
@@ -219,26 +227,42 @@ const UploadAssignmentShared = ({ userRole }) => {
         </>
       )}
 
-      {Object.keys(grouped).map((key) => (
-        <View key={key} style={[styles.card, { backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
-          <Text style={[styles.groupTitle, { color: isDark ? '#fff' : '#111827' }]}>Class {key}</Text>
-          {grouped[key].map(a => (
-            <View key={a._id} style={{ marginBottom: 16 }}>
-              <Text style={[styles.meta, { color: isDark ? '#f1f5f9' : '#111827' }]}>📌 {a.title}</Text>
-              <Text style={[styles.meta, { color: isDark ? '#cbd5e1' : '#6b7280' }]}>Subject: {a.subject || '-'}</Text>
-              <Text style={[styles.meta, { color: isDark ? '#cbd5e1' : '#6b7280' }]}>Deadline: {a.deadline?.split('T')[0] || '-'}</Text>
-              <View style={styles.actions}>
-                <TouchableOpacity onPress={() => handleDownload(a.fileUrl)}>
-                  <Ionicons name="download-outline" size={20} color="#2563eb" />
-                </TouchableOpacity>
-                {(userRole === 'admin' || userRole === 'teacher') && (
-                  <TouchableOpacity onPress={() => handleDelete(a._id)}>
-                    <Ionicons name="trash-outline" size={20} color="#ef4444" />
+      {Object.keys(grouped).map((classKey) => (
+        <View key={classKey} style={[styles.card, { backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
+          <Text style={[styles.groupTitle, { color: isDark ? '#fff' : '#111827' }]}>Class {classKey}</Text>
+          {Object.keys(grouped[classKey]).map(subjectKey => {
+            const groupKey = `${classKey}::${subjectKey}`;
+            const visible = visibleCounts[groupKey] || GROUP_SCROLL_SIZE;
+            const subjectAssignments = grouped[classKey][subjectKey].slice(0, visible);
+            const hasMore = grouped[classKey][subjectKey].length > visible;
+
+            return (
+              <View key={subjectKey} style={{ marginTop: 12 }}>
+                <Text style={{ fontWeight: '600', color: isDark ? '#38bdf8' : '#0ea5e9', marginBottom: 8 }}>📘 Subject: {subjectKey}</Text>
+                {subjectAssignments.map(a => (
+                  <View key={a._id} style={{ marginBottom: 16 }}>
+                    <Text style={[styles.meta, { color: isDark ? '#f1f5f9' : '#111827' }]}>📌 {a.title}</Text>
+                    <Text style={[styles.meta, { color: isDark ? '#cbd5e1' : '#6b7280' }]}>Deadline: {a.deadline?.split('T')[0] || '-'}</Text>
+                    <View style={styles.actions}>
+                      <TouchableOpacity onPress={() => handleDownload(a.fileUrl)}>
+                        <Ionicons name="download-outline" size={20} color="#2563eb" />
+                      </TouchableOpacity>
+                      {(userRole === 'admin' || userRole === 'teacher') && (
+                        <TouchableOpacity onPress={() => handleDelete(a._id)}>
+                          <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+                ))}
+                {hasMore && (
+                  <TouchableOpacity onPress={() => loadMore(classKey, subjectKey)} style={{ marginTop: 4 }}>
+                    <Text style={{ color: '#2563eb', fontWeight: '600' }}>Load More</Text>
                   </TouchableOpacity>
                 )}
               </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
       ))}
     </ScrollView>
