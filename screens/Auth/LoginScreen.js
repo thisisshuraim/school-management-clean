@@ -86,6 +86,18 @@ const LoginScreen = ({ onLogin }) => {
           <Ionicons name="school-outline" size={18} color="#2563eb" style={{ marginRight: 6 }} />
           <Text style={styles.aboutCardText}>Learn more about St. Anthony's School</Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => Linking.openURL('https://scalingsocials.com')}
+          style={styles.scalingCard}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.scalingCardText}>Designed and Developed by</Text>
+          <Image
+            source={require('../../assets/scalingsocials-icon.gif')}
+            style={styles.scalingCardLogo}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -152,6 +164,26 @@ const styles = StyleSheet.create({
     color: '#2563eb',
     fontWeight: '600',
     fontSize: 14
+  },
+  scalingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1e293b',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginTop: 16
+  },
+  scalingCardText: {
+    color: '#f1f5f9',
+    fontWeight: '500',
+    fontSize: 14,
+    marginRight: 8
+  },
+  scalingCardLogo: {
+    width: 100,
+    height: 30
   }
 });
 

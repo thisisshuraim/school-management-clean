@@ -53,7 +53,8 @@ export default function App() {
   const preloadAssets = async () => {
     await Asset.loadAsync([
       require('./assets/login-icon.png'),
-      require('./assets/toolbar-icon.png')
+      require('./assets/toolbar-icon.png'),
+      require('./assets/scalingsocials-icon.gif')
     ]);
   };
 
