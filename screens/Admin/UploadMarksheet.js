@@ -1,13 +1,16 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert,
-  useColorScheme, ActivityIndicator, Image, LayoutAnimation,
-  Platform, UIManager, ScrollView
+  View, Text, TextInput, StyleSheet, TouchableOpacity, Alert,
+  ActivityIndicator, Image, LayoutAnimation, Platform, UIManager,
+  useColorScheme, ScrollView
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { uploadMarksheet, getMarksheets, deleteMarksheet } from '../../utils/api';
+import {
+  uploadMarksheet,
+  getMarksheets,
+  deleteMarksheet
+} from '../../utils/api';
 import { Linking } from 'react-native';
 
 if (Platform.OS === 'android') {
@@ -20,12 +23,12 @@ const UploadMarksheet = () => {
   const isDark = useColorScheme() === 'dark';
   const [username, setUsername] = useState('');
   const [file, setFile] = useState(null);
-  const [uploading, setUploading] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [showForm, setShowForm] = useState(false);
-  const [search, setSearch] = useState('');
   const [marksheets, setMarksheets] = useState([]);
   const [visibleCounts, setVisibleCounts] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     fetchMarksheets();
@@ -51,7 +54,7 @@ const UploadMarksheet = () => {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: [ImagePicker.MediaType.Image],
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 1
     });
 
@@ -67,7 +70,7 @@ const UploadMarksheet = () => {
 
   const handleUpload = async () => {
     if (!username || !file) {
-      Alert.alert('Missing Info', 'Please enter username and select a file.');
+      Alert.alert('Missing Info', 'Please enter username and pick a file.');
       return;
     }
 
@@ -77,14 +80,13 @@ const UploadMarksheet = () => {
       formData.append('username', username);
       formData.append('file', file);
       await uploadMarksheet(formData);
-      Alert.alert('Upload Success', `Marksheet for ${username} uploaded.`);
+      Alert.alert('Success', `Marksheet uploaded for ${username}`);
       setUsername('');
       setFile(null);
       setShowForm(false);
       fetchMarksheets();
     } catch (err) {
-      const msg = err?.response?.data?.message || err.message || '';
-      Alert.alert('Upload Error', msg.includes('not found') ? 'User not found.' : msg);
+      Alert.alert('Upload Failed', err?.response?.data?.message || err.message);
     } finally {
       setUploading(false);
     }
@@ -94,13 +96,14 @@ const UploadMarksheet = () => {
     Alert.alert('Confirm Delete', 'Are you sure?', [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Delete', style: 'destructive',
+        text: 'Delete',
+        style: 'destructive',
         onPress: async () => {
           try {
             await deleteMarksheet(id);
             fetchMarksheets();
           } catch {
-            Alert.alert('Error', 'Failed to delete marksheet');
+            Alert.alert('Error', 'Failed to delete');
           }
         }
       }
@@ -108,7 +111,9 @@ const UploadMarksheet = () => {
   };
 
   const handleDownload = (url) => {
-    const fullUrl = url.startsWith('http') ? url : `https://school-management-backend-uciz.onrender.com/${url.replace(/^\/?/, '')}`;
+    const fullUrl = url.startsWith('http')
+      ? url
+      : `https://school-management-backend-uciz.onrender.com/${url.replace(/^\/?/, '')}`;
     Linking.openURL(encodeURI(fullUrl));
   };
 
@@ -132,6 +137,7 @@ const UploadMarksheet = () => {
   return (
     <ScrollView contentContainerStyle={{ padding: 24, backgroundColor: isDark ? '#0f172a' : '#f9fafc', flexGrow: 1 }}>
       <Text style={[styles.heading, { color: isDark ? '#fff' : '#111827' }]}>📄 Manage Marksheets</Text>
+
       <TextInput
         placeholder="Search by username"
         placeholderTextColor={isDark ? '#94a3b8' : '#6b7280'}
@@ -139,6 +145,7 @@ const UploadMarksheet = () => {
         value={search}
         onChangeText={setSearch}
       />
+
       <TouchableOpacity style={styles.accordionHeader} onPress={() => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setShowForm(!showForm);
@@ -149,61 +156,68 @@ const UploadMarksheet = () => {
 
       {showForm && (
         <View style={[styles.card, { backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
-          <Text style={[styles.label, { color: isDark ? '#e2e8f0' : '#1e293b' }]}>Student Username</Text>
           <TextInput
-            value={username}
-            onChangeText={setUsername}
-            placeholder="e.g. john123"
+            placeholder="Student Username"
             placeholderTextColor={isDark ? '#94a3b8' : '#6b7280'}
             style={[styles.input, { backgroundColor: isDark ? '#334155' : '#f1f5f9', color: isDark ? '#fff' : '#000' }]}
+            value={username}
+            onChangeText={setUsername}
           />
+
           <TouchableOpacity style={styles.uploadBtn} onPress={handlePickFile}>
-            <Ionicons name="cloud-upload-outline" size={22} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={styles.uploadBtnText}>{file ? 'Change File' : 'Pick File'}</Text>
+            <Ionicons name="cloud-upload-outline" size={20} color="#fff" />
+            <Text style={styles.uploadText}>{file ? 'Change File' : 'Pick File'}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.saveBtn} onPress={handleUpload} disabled={uploading}>
+            {uploading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.saveText}>Upload Marksheet</Text>
+            )}
           </TouchableOpacity>
         </View>
       )}
 
-      {Object.keys(grouped).map(groupKey => {
-        const visible = visibleCounts[groupKey] || PAGE_SIZE;
-        const hasMore = grouped[groupKey].length > visible;
-        return (
-          <View key={groupKey} style={styles.groupCard}>
-            <Text style={styles.groupTitle}>Class {groupKey}</Text>
-            {grouped[groupKey].slice(0, visible).map(m => (
-              <View key={m._id} style={[styles.card, { backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
-                <View style={styles.header}>
-                  <Ionicons name="person-circle-outline" size={24} color="#2563eb" style={{ marginRight: 8 }} />
-                  <View>
-                    <Text style={{ fontWeight: '700', color: isDark ? '#fff' : '#000' }}>{m.fullName || 'Unnamed'}</Text>
-                    <Text style={{ color: isDark ? '#94a3b8' : '#6b7280', fontSize: 12 }}>@{m.username}</Text>
-                  </View>
-                </View>
-                {m.fileUrl && (
-                  <TouchableOpacity onPress={() => handleDownload(m.fileUrl)}>
-                    <Image source={{ uri: decodeURIComponent(m.fileUrl) }} style={styles.previewImage} resizeMode="contain" />
+      {loading ? (
+        <ActivityIndicator color="#2563eb" />
+      ) : (
+        Object.keys(grouped).map(groupKey => {
+          const visible = visibleCounts[groupKey] || PAGE_SIZE;
+          const hasMore = grouped[groupKey].length > visible;
+          return (
+            <View key={groupKey} style={styles.groupCard}>
+              <Text style={styles.groupTitle}>Class {groupKey}</Text>
+              {grouped[groupKey].slice(0, visible).map(m => (
+                <View key={m._id} style={[styles.card, { backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
+                  <Text style={[styles.assignmentTitle, { color: isDark ? '#fff' : '#000' }]}>
+                    {m.fullName || 'Unnamed'} (@{m.username})
+                  </Text>
+                  {m.fileUrl && (
+                    <TouchableOpacity onPress={() => handleDownload(m.fileUrl)}>
+                      <Image source={{ uri: decodeURIComponent(m.fileUrl) }} style={styles.previewImage} resizeMode="contain" />
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(m._id)}>
+                    <Text style={styles.deleteText}>Delete</Text>
                   </TouchableOpacity>
-                )}
-                <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(m._id)}>
-                  <Text style={styles.deleteText}>Delete</Text>
+                </View>
+              ))}
+              {hasMore && (
+                <TouchableOpacity onPress={() => loadMore(groupKey)} style={{ marginTop: 6 }}>
+                  <Text style={{ color: '#2563eb', fontWeight: '600' }}>Load More</Text>
                 </TouchableOpacity>
-              </View>
-            ))}
-            {hasMore && (
-              <TouchableOpacity onPress={() => loadMore(groupKey)} style={{ marginTop: 6 }}>
-                <Text style={{ color: '#2563eb', fontWeight: '600' }}>Load More</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        );
-      })}
+              )}
+            </View>
+          );
+        })
+      )}
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   heading: { fontSize: 22, fontWeight: '700', marginBottom: 20 },
-  label: { fontSize: 14, fontWeight: '500', marginBottom: 4 },
   input: { borderRadius: 10, padding: 12, fontSize: 16, marginBottom: 16 },
   accordionHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
@@ -212,17 +226,23 @@ const styles = StyleSheet.create({
   accordionTitle: { fontSize: 15, fontWeight: '600', color: '#2563eb' },
   uploadBtn: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#2563eb',
-    padding: 12, borderRadius: 10, justifyContent: 'center', marginBottom: 16
+    padding: 12, borderRadius: 10, justifyContent: 'center', marginBottom: 12
   },
-  uploadBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  groupCard: { marginBottom: 24 },
-  groupTitle: { fontSize: 18, fontWeight: '700', marginBottom: 12, color: '#2563eb' },
+  uploadText: { color: '#fff', fontSize: 15, fontWeight: '600', marginLeft: 8 },
+  saveBtn: {
+    backgroundColor: '#22c55e', padding: 14,
+    borderRadius: 12, alignItems: 'center'
+  },
+  saveText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   card: {
     borderRadius: 12, padding: 16, marginBottom: 16,
-    shadowColor: '#000', shadowOpacity: 0.08, shadowOffset: { width: 0, height: 1 },
+    shadowColor: '#000', shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 1 },
     shadowRadius: 4, elevation: 2
   },
-  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  groupCard: { marginBottom: 24 },
+  groupTitle: { fontSize: 18, fontWeight: '700', marginBottom: 12, color: '#2563eb' },
+  assignmentTitle: { fontSize: 16, fontWeight: '600', marginBottom: 8 },
   previewImage: { width: '100%', height: 200, borderRadius: 10, marginBottom: 12 },
   deleteBtn: {
     backgroundColor: '#ef4444', paddingVertical: 10,

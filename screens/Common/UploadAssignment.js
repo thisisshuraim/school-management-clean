@@ -242,7 +242,7 @@ const UploadAssignmentShared = ({ userRole }) => {
                 {subjectAssignments.map(a => (
                   <View key={a._id} style={{ marginBottom: 16 }}>
                     <Text style={[styles.meta, { color: isDark ? '#f1f5f9' : '#111827' }]}>📌 {a.title}</Text>
-                    <Text style={[styles.meta, { color: isDark ? '#cbd5e1' : '#6b7280' }]}>Deadline: {a.deadline?.split('T')[0] || '-'}</Text>
+                    <Text style={[styles.meta, { color: isDark ? '#cbd5e1' : '#6b7280' }]}>Deadline: {a.deadline ? new Date(a.deadline).toLocaleDateString() : '-'}</Text>
                     <View style={styles.actions}>
                       <TouchableOpacity onPress={() => handleDownload(a.fileUrl)}>
                         <Ionicons name="download-outline" size={20} color="#2563eb" />

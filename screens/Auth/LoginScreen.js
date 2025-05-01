@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  View,
   Text,
   TextInput,
   TouchableOpacity,
@@ -12,7 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
-import { login } from '../../utils/api'; // ✅ import login API
+import { login } from '../../utils/api';
 
 const LoginScreen = ({ onLogin }) => {
   const [username, setUsername] = useState('');
@@ -47,7 +46,7 @@ const LoginScreen = ({ onLogin }) => {
         keyboardShouldPersistTaps="handled"
       >
         <Image
-          source={{ uri: 'https://img.icons8.com/color/96/school-building.png' }}
+          source={require('../../assets/login-icon.png')}
           style={styles.logo}
         />
         <Text style={styles.title}>Welcome 👋</Text>
@@ -91,8 +90,8 @@ const styles = StyleSheet.create({
     flexGrow: 1
   },
   logo: {
-    width: 72,
-    height: 72,
+    width: 180,
+    height: 180,
     alignSelf: 'center',
     marginBottom: 16
   },

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { SafeAreaView, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { SafeAreaView, Image, TouchableOpacity, View } from 'react-native';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { setAuthToken } from './utils/api';
 import LoginScreen from './screens/Auth/LoginScreen';
@@ -15,16 +15,21 @@ import ManageTeachers from './screens/Admin/ManageTeachers';
 import UploadMarksheet from './screens/Admin/UploadMarksheet';
 import SharedDashboard from './screens/Common/Dashboard';
 import ProfileSidebar from './components/ProfileSidebar';
+import NotificationBell from './components/NotificationBell';
 import UserContext from './context/UserContext';
+import { NotificationProvider } from './context/NotificationContext';
 import AllLectures from './screens/Common/AllLectures';
+import UploadAnnouncement from './screens/Common/UploadAnnouncement';
+import AnnouncementsTray from './screens/Common/AnnouncementsTray';
 import { Ionicons } from '@expo/vector-icons';
+import { connectSocket } from './utils/socket';
 
 const Stack = createNativeStackNavigator();
 
 const AppLogo = () => (
   <Image
-    source={{ uri: 'https://img.icons8.com/color/96/school-building.png' }}
-    style={{ width: 32, height: 32 }}
+    source={require('./assets/toolbar-icon.png')}
+    style={{ width: 36, height: 36 }}
     resizeMode="contain"
   />
 );
@@ -44,12 +49,15 @@ export default function App() {
   const [profile, setProfile] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
 
-  const handleLogin = (userData) => {
+  const handleLogin = async (userData) => {
     const role = userData?.role || userData?.user?.role || 'admin';
     const userId = userData?.user?._id || userData?._id;
     const token = userData?.token;
     setAuthToken(token);
     setUser({ ...userData, role, userId, token });
+
+    connectSocket(token);
+    await registerForPushNotificationsAsync(userId);
   };
 
   const handleLogout = () => {
@@ -62,78 +70,90 @@ export default function App() {
   const commonOptions = () => ({
     animation: 'slide_from_right',
     headerTitle: AppLogo,
-    headerRight: () => <AppAvatar onPress={() => setShowProfile(true)} />
+    headerRight: () => (
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <NotificationBell />
+        <AppAvatar onPress={() => setShowProfile(true)} />
+      </View>
+    )
   });
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#ffffff' }}>
       <PaperProvider>
-        <UserContext.Provider value={{ user, setUser, profile, setProfile }}>
-          <NavigationContainer>
-            <Stack.Navigator
-              screenOptions={{
-                headerStyle: {
-                  backgroundColor: '#ffffff',
-                  elevation: 0,
-                  shadowOpacity: 0,
-                  borderBottomWidth: 0
-                },
-                headerTintColor: '#111827',
-                headerTitleAlign: 'center',
-                headerBackTitleVisible: false
-              }}
-            >
-              {!user ? (
-                <Stack.Screen name="Login" options={{ headerShown: false }}>
-                  {(props) => <LoginScreen {...props} onLogin={handleLogin} />}
-                </Stack.Screen>
-              ) : (
-                <>
-                  <Stack.Screen name="Dashboard" component={SharedDashboard} options={commonOptions()} />
-                  {user.role.toLowerCase() === 'student' && (
-                    <>
-                      <Stack.Screen name="Timetable" component={Timetable} options={commonOptions()} />
-                      <Stack.Screen name="Marksheets" component={Marksheets} options={commonOptions()} />
-                      <Stack.Screen name="Assignments">
-                        {(props) => <UploadAssignmentShared {...props} userRole="student" />}
-                      </Stack.Screen>
-                      <Stack.Screen name="AllLectures" component={AllLectures} options={commonOptions()} />
-                    </>
-                  )}
-                  {user.role.toLowerCase() === 'teacher' && (
-                    <>
-                      <Stack.Screen name="ViewStudents" component={ViewStudents} options={commonOptions()} />
-                      <Stack.Screen name="UploadAssignment">
-                        {(props) => <UploadAssignmentShared {...props} userRole="teacher" />}
-                      </Stack.Screen>
-                      <Stack.Screen name="Timetable" component={Timetable} options={commonOptions()} />
-                      <Stack.Screen name="AllLectures" component={AllLectures} options={commonOptions()} />
-                    </>
-                  )}
-                  {user.role.toLowerCase() === 'admin' && (
-                    <>
-                      <Stack.Screen name="ManageStudents" component={ManageStudents} options={commonOptions()} />
-                      <Stack.Screen name="ManageTeachers" component={ManageTeachers} options={commonOptions()} />
-                      <Stack.Screen name="ManageTimetable" component={ManageTimetable} options={commonOptions()} />
-                      <Stack.Screen name="UploadMarksheet" component={UploadMarksheet} options={commonOptions()} />
-                      <Stack.Screen name="Assignments">
-                        {(props) => <UploadAssignmentShared {...props} userRole="admin" />}
-                      </Stack.Screen>
-                      <Stack.Screen name="AllLectures" component={AllLectures} options={commonOptions()} />
-                    </>
-                  )}
-                </>
-              )}
-            </Stack.Navigator>
-          </NavigationContainer>
-          {user && (
-            <ProfileSidebar
-              visible={showProfile}
-              onClose={() => setShowProfile(false)}
-              onLogout={handleLogout}
-            />
-          )}
-        </UserContext.Provider>
+        <NotificationProvider>
+          <UserContext.Provider value={{ user, setUser, profile, setProfile }}>
+            <NavigationContainer>
+              <Stack.Navigator
+                screenOptions={{
+                  headerStyle: {
+                    backgroundColor: '#ffffff',
+                    elevation: 0,
+                    shadowOpacity: 0,
+                    borderBottomWidth: 0
+                  },
+                  headerTintColor: '#111827',
+                  headerTitleAlign: 'center',
+                  headerBackTitleVisible: false
+                }}
+              >
+                {!user ? (
+                  <Stack.Screen name="Login" options={{ headerShown: false }}>
+                    {(props) => <LoginScreen {...props} onLogin={(userData) => handleLogin(userData)} />}
+                  </Stack.Screen>
+                ) : (
+                  <>
+                    <Stack.Screen name="Dashboard" component={SharedDashboard} options={commonOptions()} />
+                    {user.role.toLowerCase() === 'student' && (
+                      <>
+                        <Stack.Screen name="Timetable" component={Timetable} options={commonOptions()} />
+                        <Stack.Screen name="Marksheets" component={Marksheets} options={commonOptions()} />
+                        <Stack.Screen name="Assignments">
+                          {(props) => <UploadAssignmentShared {...props} userRole="student" />}
+                        </Stack.Screen>
+                        <Stack.Screen name="AllLectures" component={AllLectures} options={commonOptions()} />
+                        <Stack.Screen name="AnnouncementsTray" component={AnnouncementsTray} options={commonOptions()} />
+                      </>
+                    )}
+                    {user.role.toLowerCase() === 'teacher' && (
+                      <>
+                        <Stack.Screen name="ViewStudents" component={ViewStudents} options={commonOptions()} />
+                        <Stack.Screen name="Assignments">
+                          {(props) => <UploadAssignmentShared {...props} userRole="teacher" />}
+                        </Stack.Screen>
+                        <Stack.Screen name="Timetable" component={Timetable} options={commonOptions()} />
+                        <Stack.Screen name="AllLectures" component={AllLectures} options={commonOptions()} />
+                        <Stack.Screen name="UploadAnnouncement" component={UploadAnnouncement} options={commonOptions()} />
+                        <Stack.Screen name="AnnouncementsTray" component={AnnouncementsTray} options={commonOptions()} />
+                      </>
+                    )}
+                    {user.role.toLowerCase() === 'admin' && (
+                      <>
+                        <Stack.Screen name="ManageStudents" component={ManageStudents} options={commonOptions()} />
+                        <Stack.Screen name="ManageTeachers" component={ManageTeachers} options={commonOptions()} />
+                        <Stack.Screen name="ManageTimetable" component={ManageTimetable} options={commonOptions()} />
+                        <Stack.Screen name="UploadMarksheet" component={UploadMarksheet} options={commonOptions()} />
+                        <Stack.Screen name="Assignments">
+                          {(props) => <UploadAssignmentShared {...props} userRole="admin" />}
+                        </Stack.Screen>
+                        <Stack.Screen name="AllLectures" component={AllLectures} options={commonOptions()} />
+                        <Stack.Screen name="UploadAnnouncement" component={UploadAnnouncement} options={commonOptions()} />
+                        <Stack.Screen name="AnnouncementsTray" component={AnnouncementsTray} options={commonOptions()} />
+                      </>
+                    )}
+                  </>
+                )}
+              </Stack.Navigator>
+            </NavigationContainer>
+            {user && (
+              <ProfileSidebar
+                visible={showProfile}
+                onClose={() => setShowProfile(false)}
+                onLogout={handleLogout}
+              />
+            )}
+          </UserContext.Provider>
+        </NotificationProvider>
       </PaperProvider>
     </SafeAreaView>
   );

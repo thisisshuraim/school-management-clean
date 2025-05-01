@@ -65,4 +65,9 @@ export const uploadTimetable = (formData) => API.post('/timetable', formData, {
 });
 export const deleteTimetable = (id) => API.delete(`/timetable/${id}`);
 
+// Announcements
+export const getAnnouncements = () => API.get('/announcements');
+export const sendAnnouncement = (data, role) => API.post(`/announcements/${role.toLowerCase()}`, data);
+export const markAnnouncementRead = (id) => API.post(`/announcements/${id}/read`);
+
 export default API;
