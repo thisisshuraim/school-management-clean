@@ -9,8 +9,10 @@ import {
   Image,
   ScrollView,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Linking
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { login } from '../../utils/api';
 
 const LoginScreen = ({ onLogin }) => {
@@ -76,6 +78,14 @@ const LoginScreen = ({ onLogin }) => {
         >
           <Text style={styles.loginText}>{loading ? 'Logging in...' : 'Login'}</Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => Linking.openURL('https://stanthonyschools.info')}
+          style={styles.aboutCard}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="school-outline" size={18} color="#2563eb" style={{ marginRight: 6 }} />
+          <Text style={styles.aboutCardText}>Learn more about St. Anthony's School</Text>
+        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -127,6 +137,21 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 17,
     fontWeight: '600'
+  },
+  aboutCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#e0f2fe',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginTop: 28
+  },
+  aboutCardText: {
+    color: '#2563eb',
+    fontWeight: '600',
+    fontSize: 14
   }
 });
 

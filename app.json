@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "school-management-clean",
-    "slug": "school-management-clean",
+    "name": "St. Anthony School",
+    "slug": "stanthonyschool",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -12,10 +12,15 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
+      "bundleIdentifier": "com.scalingsocials.stanthonyschool",
       "supportsTablet": true
     },
     "android": {
+      "package": "com.scalingsocials.stanthonyschool",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -23,6 +28,17 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "97c69aa4-5e52-446d-b097-5f382fd863be"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/97c69aa4-5e52-446d-b097-5f382fd863be"
     }
   }
 }
