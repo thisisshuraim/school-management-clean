@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaView, Image, TouchableOpacity, View } from 'react-native';
@@ -23,6 +23,7 @@ import UploadAnnouncement from './screens/Common/UploadAnnouncement';
 import AnnouncementsTray from './screens/Common/AnnouncementsTray';
 import { Ionicons } from '@expo/vector-icons';
 import { connectSocket } from './utils/socket';
+import { Asset } from 'expo-asset';
 
 const Stack = createNativeStackNavigator();
 
@@ -48,6 +49,17 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
+
+  const preloadAssets = async () => {
+    await Asset.loadAsync([
+      require('./assets/login-icon.png'),
+      require('./assets/toolbar-icon.png')
+    ]);
+  };
+
+  useEffect(() => {
+    preloadAssets();
+  }, []);
 
   const handleLogin = async (userData) => {
     const role = userData?.role || userData?.user?.role || 'admin';
