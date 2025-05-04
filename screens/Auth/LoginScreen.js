@@ -10,7 +10,8 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Linking
+  Linking,
+  View
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { login } from '../../utils/api';
@@ -86,19 +87,19 @@ const LoginScreen = ({ onLogin }) => {
           <Ionicons name="school-outline" size={18} color="#2563eb" style={{ marginRight: 6 }} />
           <Text style={styles.aboutCardText}>Learn more about St. Anthony's School</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => Linking.openURL('https://scalingsocials.com')}
-          style={styles.scalingCard}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.scalingCardText}>Designed and Developed by</Text>
-          <Image
-            source={require('../../assets/scalingsocials-icon.gif')}
-            style={styles.scalingCardLogo}
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
       </ScrollView>
+      <View style={styles.footer}>
+        <Text style={styles.scalingText}>Designed and Developed by</Text>
+        <View style={styles.logoWrapper}>
+          <TouchableOpacity onPress={() => Linking.openURL('https://scalingsocials.com')}>
+            <Image
+              source={require('../../assets/scalingsocials-icon.gif')}
+              style={styles.scalingLogo}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
     </KeyboardAvoidingView>
   );
 };
@@ -165,25 +166,25 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14
   },
-  scalingCard: {
-    flexDirection: 'row',
+  footer: {
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#1e293b',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    marginTop: 16
+    marginBottom: 6,
+    marginTop: 12
   },
-  scalingCardText: {
-    color: '#f1f5f9',
-    fontWeight: '500',
-    fontSize: 14,
-    marginRight: 8
+  scalingText: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginBottom: 4
   },
-  scalingCardLogo: {
-    width: 100,
-    height: 30
+  logoWrapper: {
+    backgroundColor: '#1f2937',
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 8
+  },
+  scalingLogo: {
+    width: 80,
+    height: 20
   }
 });
 
