@@ -87,19 +87,20 @@ const LoginScreen = ({ onLogin }) => {
           <Ionicons name="school-outline" size={18} color="#2563eb" style={{ marginRight: 6 }} />
           <Text style={styles.aboutCardText}>Learn more about St. Anthony's School</Text>
         </TouchableOpacity>
-      </ScrollView>
-      <View style={styles.footer}>
-        <Text style={styles.scalingText}>Designed and Developed by</Text>
-        <View style={styles.logoWrapper}>
-          <TouchableOpacity onPress={() => Linking.openURL('https://scalingsocials.com')}>
-            <Image
-              source={require('../../assets/scalingsocials-icon.gif')}
-              style={styles.scalingLogo}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
+
+        <View style={styles.footer}>
+          <Text style={styles.scalingText}>Designed and Developed by</Text>
+          <View style={styles.logoWrapper}>
+            <TouchableOpacity onPress={() => Linking.openURL('https://scalingsocials.com')}>
+              <Image
+                source={require('../../assets/scalingsocials-icon.gif')}
+                style={styles.scalingLogo}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 };
