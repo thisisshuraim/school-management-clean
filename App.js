@@ -24,6 +24,7 @@ import AnnouncementsTray from './screens/Common/AnnouncementsTray';
 import { Ionicons } from '@expo/vector-icons';
 import { connectSocket } from './utils/socket';
 import { Asset } from 'expo-asset';
+import Calendar from './screens/Common/Calendar';
 
 const Stack = createNativeStackNavigator();
 
@@ -126,6 +127,7 @@ export default function App() {
                         </Stack.Screen>
                         <Stack.Screen name="AllLectures" component={AllLectures} options={commonOptions()} />
                         <Stack.Screen name="AnnouncementsTray" component={AnnouncementsTray} options={commonOptions()} />
+                        <Stack.Screen name="Calendar" component={Calendar} options={commonOptions()} />
                       </>
                     )}
                     {user.role.toLowerCase() === 'teacher' && (
@@ -138,6 +140,7 @@ export default function App() {
                         <Stack.Screen name="AllLectures" component={AllLectures} options={commonOptions()} />
                         <Stack.Screen name="UploadAnnouncement" component={UploadAnnouncement} options={commonOptions()} />
                         <Stack.Screen name="AnnouncementsTray" component={AnnouncementsTray} options={commonOptions()} />
+                        <Stack.Screen name="Calendar" component={Calendar} options={commonOptions()} />
                       </>
                     )}
                     {user.role.toLowerCase() === 'admin' && (
@@ -152,6 +155,7 @@ export default function App() {
                         <Stack.Screen name="AllLectures" component={AllLectures} options={commonOptions()} />
                         <Stack.Screen name="UploadAnnouncement" component={UploadAnnouncement} options={commonOptions()} />
                         <Stack.Screen name="AnnouncementsTray" component={AnnouncementsTray} options={commonOptions()} />
+                        <Stack.Screen name="Calendar" component={Calendar} options={commonOptions()} />
                       </>
                     )}
                   </>

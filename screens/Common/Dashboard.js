@@ -66,6 +66,7 @@ const SharedDashboard = ({ navigation }) => {
       { icon: 'videocam-outline', label: 'Lectures', screen: 'AllLectures' }
     );
   }
+  tiles.unshift({ icon: 'calendar-number-outline', label: 'Calendar', screen: 'Calendar' })
 
   return (
     <ScrollView contentContainerStyle={[styles.container, { backgroundColor: isDark ? '#0f172a' : '#f9fafc' }]}>

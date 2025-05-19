@@ -70,4 +70,10 @@ export const getAnnouncements = () => API.get('/announcements');
 export const sendAnnouncement = (data, role) => API.post(`/announcements/${role.toLowerCase()}`, data);
 export const markAnnouncementRead = (id) => API.post(`/announcements/${id}/read`);
 
+//Calendar
+export const getCalendar = () => API.get('/calendar');
+export const uploadCalendar = (formData) => API.post('/calendar', formData, {
+  headers: { 'Content-Type': 'multipart/form-data' },
+});
+
 export default API;
