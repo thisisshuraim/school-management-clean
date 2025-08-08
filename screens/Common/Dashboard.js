@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useContext } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet, useColorScheme, Linking
+  View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet, useColorScheme, Linking, Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getMyTeacherProfile, getMyStudentProfile } from '../../utils/api';
@@ -35,6 +35,8 @@ const SharedDashboard = ({ navigation }) => {
   const isAdmin = user.role === 'admin';
   const isTeacher = user.role === 'teacher';
   const isStudent = user.role === 'student';
+
+  const appLink = Platform.OS === 'ios' ? 'https://apps.apple.com/app/id6749620629?action=write-review' : 'https://play.google.com/store/apps/details?id=com.scalingsocials.stanthonyschool';
 
   const tiles = [];
 
@@ -133,7 +135,7 @@ const SharedDashboard = ({ navigation }) => {
         <TouchableOpacity
           style={[styles.socialButton, { backgroundColor: '#FBBF24' }]}
           onPress={() => {
-            Linking.openURL('https://play.google.com/store/apps/details?id=com.stanthonyschool');
+            Linking.openURL(appLink);
           }}
         >
           <Ionicons name="star-outline" size={18} color="#000" style={{ marginRight: 8 }} />

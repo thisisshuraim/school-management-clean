@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: 'http://3.109.1.117:5000/api',
+  baseURL: 'https://api.stanthonysschool.co.in/api',
 });
 
 export const setAuthToken = (token) => {
