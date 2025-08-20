@@ -6,7 +6,6 @@ import {
   StyleSheet,
   Dimensions,
   Alert,
-  Image,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
@@ -15,6 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { login } from '../../utils/api';
+import { Image } from 'expo-image';
 
 const LoginScreen = ({ onLogin }) => {
   const [username, setUsername] = useState('');

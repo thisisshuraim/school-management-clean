@@ -3,7 +3,7 @@
     "name": "St. Anthony's School, JPG",
     "displayName": "St. Anthony's School, JPG",
     "slug": "stanthonyschool",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -25,6 +25,7 @@
     },
     "android": {
       "package": "com.scalingsocials.stanthonyschool",
+      "appName": "St. Anthony's School, JPG",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
